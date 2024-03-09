@@ -37,19 +37,42 @@
 
 // index.js
 
-import WebSocket from 'ws';
-const ws = new WebSocket.Server({ port: 8081 });
+import express from "express";
+import { WebSocket as WWW, WebSocketServer } from "ws";
+import http from "http";
 
-ws.on('connection', socket => {
-  console.log('connected!');
+const app = express();
+const port = 3000;
 
-  socket.on('message', ms => {
-    console.log(ms);
+// HTTPサーバーの設定
+const server = http.createServer(app);
+
+// WebSocketサーバーの設定
+const wss = new WebSocketServer({ server });
+
+wss.on("connection", (ws) => {
+  console.log("Client connected");
+
+  ws.on("message", (message) => {
+    console.log(`Received message: ${message}`);
+    wss.clients.forEach((client) => {
+      if (client !== ws && client.readyState === WWW.OPEN) {
+        client.send(message.toString());
+      }
+    });
   });
 
-  socket.on('close', () => {
-    console.log('good bye.');
+  ws.on("close", () => {
+    console.log("Client disconnected");
   });
 });
 
+// Expressルートの設定
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
+// サーバーの起動
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
